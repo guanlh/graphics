@@ -283,6 +283,47 @@ func ProportionalZoomImage(width, height int, oriImage image.Image) image.Image 
 	return resize.Resize(uint(width), uint(height), oriImage, resize.Lanczos3)
 }
 
+//Image转换为image.RGBA
+func ImageTypeToRGBA(m *image.Image) *image.RGBA {
+	bounds := (*m).Bounds()
+	dx := bounds.Dx()
+	dy := bounds.Dy()
+	newRgba := image.NewRGBA(bounds)
+	for i := 0; i < dx; i++ {
+		for j := 0; j < dy; j++ {
+			colorRgb := (*m).At(i, j)
+			r, g, b, a := colorRgb.RGBA()
+			nR := uint8(r)
+			nG := uint8(g)
+			nB := uint8(b)
+			alpha := uint8(a)
+			newRgba.SetRGBA(i, j, color.RGBA{R: nR, G: nG, B: nB, A: alpha})
+		}
+	}
+	return newRgba
+}
+
+//将输入图像m的透明度变为原来的倍数。若原来为完成全不透明，则percentage = 0.5将变为半透明
+func OpacityAdjust(m *image.RGBA, percentage float64) *image.RGBA {
+	bounds := m.Bounds()
+	dx := bounds.Dx()
+	dy := bounds.Dy()
+	newRgba := image.NewRGBA(bounds)
+	for i := 0; i < dx; i++ {
+		for j := 0; j < dy; j++ {
+			colorRgb := m.At(i, j)
+			r, g, b, a := colorRgb.RGBA()
+			opacity := uint8(float64(a) * percentage)
+			//颜色模型转换，至关重要！
+			v := newRgba.ColorModel().Convert(color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: opacity})
+			//Alpha = 0: Full transparent
+			rr, gg, bb, aa := v.RGBA()
+			newRgba.SetRGBA(i, j, color.RGBA{R: uint8(rr), G: uint8(gg), B: uint8(bb), A: uint8(aa)})
+		}
+	}
+	return newRgba
+}
+
 // 根据http 连接获取图片处理
 func GetResourceReader(url string) (r *bytes.Reader, err error) {
 	if url[0:4] == "http" {
